@@ -8,6 +8,9 @@ class Pipe {
         this.bottom = height - (this.top + this.gap);
 
         this.x = width;
+
+        // flag that checks if birds passed this pipe or not
+        this.passed = false;
     }
 
     hits(bird) {
