@@ -8,7 +8,7 @@ let spawnTimer = 0;
 let currentScore = 0;
 let bestScore = 0;
 
-let totalGenScores = 0; 
+let totalGenScores = 0;
 let averageScore = 0;
 
 let currentScoreLabel, bestScoreLabel, averageScoreLabel, speedLabel, populationLabel, statusLabel, generationLabel;
@@ -60,6 +60,18 @@ function setup() {
     btnReset.style('border-radius', '4px');
     btnReset.style('cursor', 'pointer');
     btnReset.mousePressed(killAllBirds);
+
+    let btnSave = createButton("Save Best Bird");
+
+    btnSave.parent(controlContainer);
+    btnSave.style('padding', '6px 12px');
+    btnSave.style('margin-left', '10px');
+    btnSave.style('background-color', '#4CAF50');
+    btnSave.style('color', 'white');
+    btnSave.style('border', 'none');
+    btnSave.style('border-radius', '4px');
+    btnSave.style('cursor', 'pointer');
+    btnSave.mousePressed(saveBestBird);
 
     let targetPopulation = populationSlider.value();
     for (let i = 0; i < targetPopulation; i++) {
@@ -208,6 +220,34 @@ function killAllBirds() {
     }
 
     nextGeneration();
+}
+
+function saveBestBird() {
+    let bestBird = null;
+    let maxFitness = -1;
+
+    for (let bird of birds) {
+        if (bird.fitness > maxFitness) {
+            maxFitness = bird.fitness;
+            bestBird = bird;
+        }
+    }
+
+    if (!bestBird && savedBirds.length > 0) {
+        for (let bird of savedBirds) {
+            if (bird.fitness > maxFitness) {
+                maxFitness = bird.fitness;
+                bestBird = bird;
+            }
+        }
+    }
+
+    if (bestBird) {
+        console.log("Saving bird with fitness: ", bestBird.fitness);
+        bestBird.save();
+    } else {
+        console.log("No bird to save!");
+    }
 }
 
 function keyPressed() {

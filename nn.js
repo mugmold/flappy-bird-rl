@@ -116,4 +116,8 @@ class NeuralNetwork {
     dispose() {
         this.model.dispose();
     }
+
+    save(filename = 'best-bird-model') {
+        this.model.save(`downloads://${filename}`);
+    }
 }

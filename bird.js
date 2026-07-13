@@ -116,4 +116,8 @@ class Bird {
     dispose() {
         this.brain.dispose();
     }
+
+    save() {
+        this.brain.save();
+    }
 }
