@@ -1,6 +1,6 @@
 let minVelocity = -15
 let maxVelocity = 10
-let birdLift = -10
+let birdLift = -12
 
 class Bird {
     constructor(brain = null) {
@@ -13,6 +13,9 @@ class Bird {
 
         // fitness score to track how long the bird survives
         this.fitness = 0;
+
+        // to track how many pipes the bird passed
+        this.score = 0;
 
         // if a trained brain is passed, use it. otherwise, create a fresh one.
         // 5 inputs: bird.y, bird.velocity, closestPipe.x, closestPipe.top, closestPipe.bottom
@@ -75,14 +78,16 @@ class Bird {
     }
 
     jump() {
-        this.velocity = this.lift;
+        this.velocity += this.lift;
+        this.velocity = constrain(this.velocity, minVelocity, maxVelocity);
     }
 
     isDead() {
         return (this.y > height - this.r || this.y < this.r);
     }
 
-    think(closestPipe) {
+    // extract state logic for easier integration with other rl algorithms
+    getState(closestPipe) {
         // default value if there are no pipes
         let pipeX = width;
         let pipeTop = 0;
@@ -95,14 +100,17 @@ class Bird {
         }
 
         // make sure all inputs are normalized to avoid bias
-        let inputs = [
-            this.y / height,                                                        // bird vertical position
-            (this.velocity - minVelocity) / (maxVelocity - minVelocity),            // bird velocity
-            pipeX / width,                                                          // distance to the upcoming pipe
-            pipeTop / height,                                                       // top pipe boundary position
-            pipeBottom / height,                                                    // bottom pipe boundary position
-        ]
+        return [
+            this.y / height,                                                // bird vertical position
+            (this.velocity - minVelocity) / (maxVelocity - minVelocity),    // bird velocity
+            pipeX / width,                                                  // distance to the upcoming pipe
+            pipeTop / height,                                               // top pipe boundary position
+            pipeBottom / height,                                            // bottom pipe boundary position
+        ];
+    }
 
+    think(closestPipe) {
+        let inputs = this.getState(closestPipe);
         let action = this.brain.predict(inputs);
 
         let jumpProb = action[0];

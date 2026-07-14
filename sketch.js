@@ -29,8 +29,8 @@ function setup() {
     generationLabel = createP("");
     speedLabel = createP("");
 
-    // slider: min 1x, max 10x, default 5x, step 1
-    speedSlider = createSlider(1, 10, 5, 1);
+    // slider: min 1x, max 10x, default 5x, step 0.5x
+    speedSlider = createSlider(1, 10, 5, 0.5);
     speedSlider.style('width', '200px');
 
     // slider: min 1 bird, max 200 birds, default 200, step 1
@@ -73,10 +73,7 @@ function setup() {
     btnSave.style('cursor', 'pointer');
     btnSave.mousePressed(saveBestBird);
 
-    let targetPopulation = populationSlider.value();
-    for (let i = 0; i < targetPopulation; i++) {
-        birds.push(new Bird());
-    }
+    resetGameEnvironment();
 }
 
 function draw() {
@@ -98,6 +95,10 @@ function draw() {
             if (!pipes[i].passed && pipes[i].x + pipes[i].width < xStart) {
                 pipes[i].passed = true;
                 currentScore++;
+
+                for (let bird of birds) {
+                    bird.score++;
+                }
 
                 if (currentScore > bestScore) {
                     bestScore = currentScore;
@@ -140,8 +141,9 @@ function draw() {
             }
         }
 
+        // trigger episode end when all birds are dead
         if (birds.length === 0) {
-            nextGeneration();
+            handleEpisodeEnd();
             break;
         }
     }
@@ -168,58 +170,39 @@ function draw() {
     }
 }
 
-function nextGeneration() {
+function handleEpisodeEnd() {
     totalGenScores += currentScore;
     averageScore = totalGenScores / generationCount;
-
     generationCount++;
-    pipes = [];
-    birds = [];
-    spawnTimer = 0;
-    currentScore = 0;
-
-    let bestBird = savedBirds[0];
-    for (let bird of savedBirds) {
-        if (bird.fitness > bestBird.fitness) {
-            bestBird = bird;
-        }
-    }
 
     let targetPopulation = populationSlider.value();
-    let bestBrain = bestBird.brain;
 
-    birds.push(new Bird(bestBrain.copy()));
-
-    let dynamicMutationRate = map(bestScore, 0, 30, 0.20, 0.01, true);
-
-    // 80% of birds will use best brain, while the others will use new brain
-    let mutationQuota = floor(targetPopulation * 0.8);
-
-    for (let i = 1; i < mutationQuota; i++) {
-        let childBrain = bestBrain.copy();
-        childBrain.mutate(dynamicMutationRate);
-        birds.push(new Bird(childBrain));
-    }
-
-    let remainingSlots = targetPopulation - birds.length;
-    for (let i = 0; i < remainingSlots; i++) {
-        birds.push(new Bird());
-    }
-
-    // dispose old models from memory to prevent memory leaks
-    for (let bird of savedBirds) {
-        bird.dispose();
-    }
+    // delegate learning logic to the ai module
+    birds = NeuroEvolution.nextGeneration(savedBirds, bestScore, targetPopulation);
 
     savedBirds = [];
+    pipes = [];
+    spawnTimer = 0;
+    currentScore = 0;
+}
+
+function resetGameEnvironment() {
+    let targetPopulation = populationSlider.value();
+    birds = [];
+    for (let i = 0; i < targetPopulation; i++) {
+        birds.push(new Bird());
+    }
+    savedBirds = [];
+    pipes = [];
+    spawnTimer = 0;
+    currentScore = 0;
 }
 
 function killAllBirds() {
     for (let i = birds.length - 1; i >= 0; i--) {
         savedBirds.push(birds.splice(i, 1)[0]);
     }
-
-    nextGeneration();
+    handleEpisodeEnd();
 }
 
 function saveBestBird() {
