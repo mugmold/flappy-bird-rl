@@ -7,6 +7,7 @@ let spawnTimer = 0;
 
 let currentScore = 0;
 let bestScore = 0;
+let pipesSpawned = 0;
 
 let totalGenScores = 0;
 let averageScore = 0;
@@ -84,15 +85,19 @@ function draw() {
     for (let n = 0; n < cycles; n++) {
         // handle pipe generation logic
         spawnTimer += 1;
-        if (spawnTimer >= 100) {
-            pipes.push(new Pipe());
+
+        // stop spawning pipes if we hit the limit (1000)
+        if (spawnTimer >= 100 && pipesSpawned < 1000) {
+            pipesSpawned++;
+            let isFinishLine = (pipesSpawned === 1000);
+            pipes.push(new Pipe(isFinishLine));
             spawnTimer = 0;
         }
 
         for (let i = pipes.length - 1; i >= 0; i--) {
             pipes[i].update();
 
-            if (!pipes[i].passed && pipes[i].x + pipes[i].width < xStart) {
+            if (!pipes[i].passed && pipes[i].x + pipes[i].width < (xStart - birdRadius)) {
                 pipes[i].passed = true;
                 currentScore++;
 
@@ -115,7 +120,7 @@ function draw() {
         let record = Infinity;
         for (let i = 0; i < pipes.length; i++) {
             // calculate horizontal distance to the right edge of the pipe
-            let diff = (pipes[i].x + pipes[i].width) - xStart;
+            let diff = (pipes[i].x + pipes[i].width) - (xStart - birdRadius);
             if (diff > 0 && diff < record) {
                 record = diff;
                 closestPipe = pipes[i];
@@ -141,8 +146,8 @@ function draw() {
             }
         }
 
-        // trigger episode end when all birds are dead
-        if (birds.length === 0) {
+        // trigger episode end when all birds are dead or the finish line is passed
+        if (birds.length === 0 || currentScore >= 1000) {
             handleEpisodeEnd();
             break;
         }
@@ -152,8 +157,10 @@ function draw() {
 
     // update HTML every 5 frame (because of p5.js performance issue)
     if (frameCount % 5 === 0) {
+        let displayBest = bestScore >= 1000 ? "FINISH (1000)" : bestScore;
+
         currentScoreLabel.html("Current Score: " + currentScore);
-        bestScoreLabel.html("Best Score: <b>" + bestScore + "</b>");
+        bestScoreLabel.html("Best Score: <b>" + displayBest + "</b>");
         averageScoreLabel.html("Average Gen Best Score: <b>" + averageScore.toFixed(2) + "</b>");
         generationLabel.html("Generation: " + generationCount);
         speedLabel.html("Training Speed (Cycles): " + speedSlider.value() + "x");
@@ -180,28 +187,34 @@ function handleEpisodeEnd() {
     // delegate learning logic to the ai module
     birds = NeuroEvolution.nextGeneration(savedBirds, bestScore, targetPopulation);
 
-    savedBirds = [];
-    pipes = [];
-    spawnTimer = 0;
-    currentScore = 0;
+    resetVariable();
 }
 
 function resetGameEnvironment() {
     let targetPopulation = populationSlider.value();
+
     birds = [];
+
     for (let i = 0; i < targetPopulation; i++) {
         birds.push(new Bird());
     }
+
+    resetVariable();
+}
+
+function resetVariable() {
     savedBirds = [];
     pipes = [];
     spawnTimer = 0;
     currentScore = 0;
+    pipesSpawned = 0;
 }
 
 function killAllBirds() {
     for (let i = birds.length - 1; i >= 0; i--) {
         savedBirds.push(birds.splice(i, 1)[0]);
     }
+
     handleEpisodeEnd();
 }
 

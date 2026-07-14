@@ -1,13 +1,15 @@
 let minVelocity = -15
 let maxVelocity = 10
 let birdLift = -12
+let birdRadius = 12;
+let birdGravity = 0.6;
 
 class Bird {
     constructor(brain = null) {
         this.x = xStart;
         this.y = height / 2;
-        this.r = 12;
-        this.gravity = 0.6;
+        this.r = birdRadius;
+        this.gravity = birdGravity;
         this.velocity = 0;
         this.lift = birdLift;
 
