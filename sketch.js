@@ -74,6 +74,84 @@ function setup() {
     btnSave.style('cursor', 'pointer');
     btnSave.mousePressed(saveBestBird);
 
+    // load model button setup
+    let btnLoad = createButton("Load Model");
+    btnLoad.parent(controlContainer);
+    btnLoad.style('padding', '6px 12px');
+    btnLoad.style('margin-left', '10px');
+    btnLoad.style('background-color', '#2196F3'); // blue color
+    btnLoad.style('color', 'white');
+    btnLoad.style('border', 'none');
+    btnLoad.style('border-radius', '4px');
+    btnLoad.style('cursor', 'pointer');
+
+    // hidden file input to handle multiple files (.json and .bin)
+    let hiddenFileInput = createElement('input');
+    hiddenFileInput.attribute('type', 'file');
+    hiddenFileInput.attribute('multiple', '');
+    hiddenFileInput.attribute('accept', '.json,.bin');
+    hiddenFileInput.style('display', 'none');
+    hiddenFileInput.parent(controlContainer);
+
+    // trigger hidden input when button is clicked
+    btnLoad.mousePressed(() => {
+        hiddenFileInput.elt.click();
+    });
+
+    // handle the uploaded files via tensorflow API
+    hiddenFileInput.elt.addEventListener('change', async (e) => {
+        let files = e.target.files;
+
+        // tfjs needs both the json and the weight bin files
+        if (files.length < 2) {
+            alert("Please select BOTH the model.json and model.weights.bin files at the same time.");
+            return;
+        }
+
+        try {
+            let fileArray = Array.from(files);
+
+            // force the .json file to be the first element in the array
+            fileArray.sort((a, b) => {
+                if (a.name.endsWith('.json')) return -1;
+                if (b.name.endsWith('.json')) return 1;
+                return 0;
+            });
+
+            const loadedModel = await tf.loadLayersModel(tf.io.browserFiles(fileArray));
+
+            // force UI sliders to 1 for showcase mode
+            speedSlider.value(1);
+            populationSlider.value(1);
+
+            // clean up memory from current generation
+            for (let bird of birds) bird.dispose();
+            for (let bird of savedBirds) bird.dispose();
+
+            birds = [];
+            savedBirds = [];
+
+            // reset all game logic stats to 0
+            resetVariable();
+            bestScore = 0;
+            totalGenScores = 0;
+            averageScore = 0;
+            generationCount = 1;
+
+            // spawn one single bird using the loaded brain
+            let loadedBrain = new NeuralNetwork(5, 8, 2, loadedModel);
+            birds.push(new Bird(loadedBrain));
+
+            console.log("Model successfully loaded!");
+
+            // clear the input so user can load another model later if they want
+            hiddenFileInput.elt.value = "";
+        } catch (err) {
+            console.error(err);
+            alert("Failed to load model! Check console for errors.");
+        }
+    });
+
     resetGameEnvironment();
 }
 
@@ -147,8 +225,11 @@ function draw() {
         }
 
         // trigger episode end when all birds are dead or the finish line is passed
-        if (birds.length === 0 || currentScore >= 1000) {
+        if (birds.length === 0) {
             handleEpisodeEnd();
+            break;
+        } else if (currentScore >= 1000) {
+            killAllBirds();
             break;
         }
     }
@@ -246,10 +327,4 @@ function saveBestBird() {
     }
 }
 
-function keyPressed() {
-    // if (key === ' ') {
-    //     for (let bird of birds) {
-    //         bird.jump();
-    //     }
-    // }
-}
+function keyPressed() { }
