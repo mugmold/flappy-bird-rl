@@ -2,7 +2,7 @@ class Pipe {
     // accept a boolean to determine if this is the final pipe
     constructor(isFinishLine = false) {
         this.width = 60;
-        this.gap = 130;
+        this.gap = 110;
         this.speed = 3;
 
         this.top = random(50, height / 2);

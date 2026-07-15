@@ -1,6 +1,6 @@
-let minVelocity = -15
-let maxVelocity = 10
-let birdLift = -12
+let minVelocity = -15;
+let maxVelocity = 10;
+let birdLift = -15;
 let birdRadius = 12;
 let birdGravity = 0.6;
 
