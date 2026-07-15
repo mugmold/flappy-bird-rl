@@ -47,7 +47,6 @@ class NeuralNetwork {
     predict(inputs) {
         return tf.tidy(() => {
             const xs = tf.tensor2d([inputs]);
-
             const ys = this.model.predict(xs);
 
             // extract the raw javascript array data out of the tensor
@@ -108,7 +107,7 @@ class NeuralNetwork {
                 mutatedWeights[i] = newTensor;
             }
 
-            // apply the brand new mutated weights back to the current bird model
+            // apply the brand new mutated weights back to the current model
             this.model.setWeights(mutatedWeights);
         });
     }

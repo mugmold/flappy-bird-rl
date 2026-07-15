@@ -1,6 +1,9 @@
 let pipes = [];
 let birds = [];
-let savedBirds = [];
+let savedAgents = []; // array to store objects containing bird physics and ga brain
+
+let gaAgent;
+
 let speedSlider;
 let populationSlider;
 let spawnTimer = 0;
@@ -51,8 +54,7 @@ function setup() {
     populationSlider.parent(controlContainer);
     statusLabel.parent(controlContainer);
 
-    let btnReset = createButton("Kill All Birds (Force Next Gen)");
-
+    let btnReset = createButton("kill all birds (force next gen)");
     btnReset.parent(controlContainer);
     btnReset.style('padding', '6px 12px');
     btnReset.style('background-color', '#ff4c4c');
@@ -62,8 +64,7 @@ function setup() {
     btnReset.style('cursor', 'pointer');
     btnReset.mousePressed(killAllBirds);
 
-    let btnSave = createButton("Save Best Bird");
-
+    let btnSave = createButton("save best bird");
     btnSave.parent(controlContainer);
     btnSave.style('padding', '6px 12px');
     btnSave.style('margin-left', '10px');
@@ -75,7 +76,7 @@ function setup() {
     btnSave.mousePressed(saveBestBird);
 
     // load model button setup
-    let btnLoad = createButton("Load Model");
+    let btnLoad = createButton("load model");
     btnLoad.parent(controlContainer);
     btnLoad.style('padding', '6px 12px');
     btnLoad.style('margin-left', '10px');
@@ -98,13 +99,13 @@ function setup() {
         hiddenFileInput.elt.click();
     });
 
-    // handle the uploaded files via tensorflow API
+    // handle the uploaded files via tensorflow api
     hiddenFileInput.elt.addEventListener('change', async (e) => {
         let files = e.target.files;
 
         // tfjs needs both the json and the weight bin files
         if (files.length < 2) {
-            alert("Please select BOTH the model.json and model.weights.bin files at the same time.");
+            alert("please select both the model.json and model.weights.bin files at the same time.");
             return;
         }
 
@@ -120,16 +121,12 @@ function setup() {
 
             const loadedModel = await tf.loadLayersModel(tf.io.browserFiles(fileArray));
 
-            // force UI sliders to 1 for showcase mode
+            // force ui sliders to 1 for showcase mode
             speedSlider.value(1);
             populationSlider.value(1);
 
-            // clean up memory from current generation
-            for (let bird of birds) bird.dispose();
-            for (let bird of savedBirds) bird.dispose();
-
-            birds = [];
-            savedBirds = [];
+            // load the brain into the agent
+            gaAgent.loadModel(loadedModel);
 
             // reset all game logic stats to 0
             resetVariable();
@@ -137,21 +134,17 @@ function setup() {
             totalGenScores = 0;
             averageScore = 0;
             generationCount = 1;
+            resetGameEnvironment();
 
-            // spawn one single bird using the loaded brain
-            let loadedBrain = new NeuralNetwork(5, 8, 2, loadedModel);
-            birds.push(new Bird(loadedBrain));
-
-            console.log("Model successfully loaded!");
-
-            // clear the input so user can load another model later if they want
+            console.log("model successfully loaded!");
             hiddenFileInput.elt.value = "";
         } catch (err) {
             console.error(err);
-            alert("Failed to load model! Check console for errors.");
+            alert("failed to load model! check console for errors.");
         }
     });
 
+    gaAgent = new GAAgent(populationSlider.value());
     resetGameEnvironment();
 }
 
@@ -205,22 +198,35 @@ function draw() {
             }
         }
 
+        let states = birds.map(b => b.getState(closestPipe));
+        let actions = gaAgent.actAll(states);
+
         // handle bird physics and collision logic
         for (let i = birds.length - 1; i >= 0; i--) {
-            birds[i].think(closestPipe)
-            birds[i].update();
+            let bird = birds[i];
+
+            if (actions[i] === 1) bird.jump();
+            bird.update();
 
             let hitPipe = false;
             for (let pipe of pipes) {
-                if (pipe.hits(birds[i])) {
+                if (pipe.hits(bird)) {
                     hitPipe = true;
                     break;
                 }
             }
 
-            if (birds[i].isDead() || hitPipe) {
+            if (bird.isDead() || hitPipe) {
                 // save the dead bird to the pool for genetic selection before removing it
-                savedBirds.push(birds.splice(i, 1)[0]);
+                savedAgents.push({
+                    bird: bird,
+                    brain: gaAgent.brains[i],
+                    fitness: bird.fitness,
+                    score: bird.score
+                });
+
+                gaAgent.brains.splice(i, 1);
+                birds.splice(i, 1);
             }
         }
 
@@ -236,25 +242,26 @@ function draw() {
 
     background(0);
 
-    // update HTML every 5 frame (because of p5.js performance issue)
+    // update html every 5 frame (because of p5.js performance issue)
     if (frameCount % 5 === 0) {
         let displayBest = bestScore >= 1000 ? "FINISH (1000)" : bestScore;
-
-        currentScoreLabel.html("Current Score: " + currentScore);
-        bestScoreLabel.html("Best Score: <b>" + displayBest + "</b>");
-        averageScoreLabel.html("Average Gen Best Score: <b>" + averageScore.toFixed(2) + "</b>");
-        generationLabel.html("Generation: " + generationCount);
-        speedLabel.html("Training Speed (Cycles): " + speedSlider.value() + "x");
-        populationLabel.html("Bird Count (Next Attempt): " + populationSlider.value());
-        statusLabel.html("Birds Alive: " + birds.length);
+        currentScoreLabel.html("current score: " + currentScore);
+        bestScoreLabel.html("best score: <b>" + displayBest + "</b>");
+        averageScoreLabel.html("average gen best score: <b>" + averageScore.toFixed(2) + "</b>");
+        generationLabel.html("generation: " + generationCount);
+        speedLabel.html("training speed (cycles): " + speedSlider.value() + "x");
+        populationLabel.html("bird count (next attempt): " + populationSlider.value());
+        statusLabel.html("birds alive: " + birds.length);
     }
 
     for (let pipe of pipes) {
         pipe.show();
     }
 
+    // handle opacity internally based on density
+    let opacity = birds.length > 20 ? 80 : 200;
     for (let bird of birds) {
-        bird.show();
+        bird.show(opacity);
     }
 }
 
@@ -264,27 +271,23 @@ function handleEpisodeEnd() {
     generationCount++;
 
     let targetPopulation = populationSlider.value();
+    gaAgent.populationSize = targetPopulation;
 
     // delegate learning logic to the ai module
-    birds = NeuroEvolution.nextGeneration(savedBirds, bestScore, targetPopulation);
-
-    resetVariable();
+    gaAgent.evolve(savedAgents, bestScore);
+    resetGameEnvironment();
 }
 
 function resetGameEnvironment() {
-    let targetPopulation = populationSlider.value();
-
     birds = [];
-
-    for (let i = 0; i < targetPopulation; i++) {
+    resetVariable();
+    for (let i = 0; i < gaAgent.populationSize; i++) {
         birds.push(new Bird());
     }
-
-    resetVariable();
 }
 
 function resetVariable() {
-    savedBirds = [];
+    savedAgents = [];
     pipes = [];
     spawnTimer = 0;
     currentScore = 0;
@@ -293,38 +296,43 @@ function resetVariable() {
 
 function killAllBirds() {
     for (let i = birds.length - 1; i >= 0; i--) {
-        savedBirds.push(birds.splice(i, 1)[0]);
+        let bird = birds[i];
+        savedAgents.push({
+            bird: bird,
+            brain: gaAgent.brains[i],
+            fitness: bird.fitness,
+            score: bird.score
+        });
     }
-
+    birds = [];
+    gaAgent.brains = [];
     handleEpisodeEnd();
 }
 
 function saveBestBird() {
-    let bestBird = null;
+    let bestBrain = null;
     let maxFitness = -1;
 
-    for (let bird of birds) {
-        if (bird.fitness > maxFitness) {
-            maxFitness = bird.fitness;
-            bestBird = bird;
+    for (let i = 0; i < birds.length; i++) {
+        if (birds[i].fitness > maxFitness) {
+            maxFitness = birds[i].fitness;
+            bestBrain = gaAgent.brains[i];
         }
     }
 
-    if (!bestBird && savedBirds.length > 0) {
-        for (let bird of savedBirds) {
-            if (bird.fitness > maxFitness) {
-                maxFitness = bird.fitness;
-                bestBird = bird;
+    if (!bestBrain && savedAgents.length > 0) {
+        for (let agent of savedAgents) {
+            if (agent.fitness > maxFitness) {
+                maxFitness = agent.fitness;
+                bestBrain = agent.brain;
             }
         }
     }
 
-    if (bestBird) {
-        console.log("Saving bird with fitness: ", bestBird.fitness);
-        bestBird.save();
+    if (bestBrain) {
+        console.log("saving bird with fitness: ", maxFitness);
+        bestBrain.save();
     } else {
-        console.log("No bird to save!");
+        console.log("no bird to save!");
     }
 }
-
-function keyPressed() { }

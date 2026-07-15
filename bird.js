@@ -5,7 +5,7 @@ let birdRadius = 12;
 let birdGravity = 0.6;
 
 class Bird {
-    constructor(brain = null) {
+    constructor() {
         this.x = xStart;
         this.y = height / 2;
         this.r = birdRadius;
@@ -18,24 +18,11 @@ class Bird {
 
         // to track how many pipes the bird passed
         this.score = 0;
-
-        // if a trained brain is passed, use it. otherwise, create a fresh one.
-        // 5 inputs: bird.y, bird.velocity, closestPipe.x, closestPipe.top, closestPipe.bottom
-        // 8 hidden nodes (can be adjusted)
-        // 2 outputs: [jump, do_nothing]
-        if (brain) {
-            this.brain = brain;
-        } else {
-            this.brain = new NeuralNetwork(5, 8, 2);
-        }
     }
 
-    show() {
+    show(opacity = 200) {
         push();
         translate(this.x, this.y);
-
-        // adjust opacity based on population density so it doesn't blind the screen
-        let opacity = birds.length > 20 ? 80 : 200;
 
         // body (chubby bird shape)
         fill(255, 204, 0, opacity); // bright yellow
@@ -96,38 +83,18 @@ class Bird {
         let pipeBottom = height;
 
         if (closestPipe) {
-            pipeX = closestPipe.x;                      // exact x-coordinate of the closestPipe
-            pipeTop = closestPipe.top;                  // exact y-coordinate of the top closestPipe
-            pipeBottom = height - closestPipe.bottom;   // exact y-coordinate of the bottom closestPipe
+            pipeX = closestPipe.x;                      // exact x-coordinate of the closest pipe
+            pipeTop = closestPipe.top;                  // exact y-coordinate of the top closest pipe
+            pipeBottom = height - closestPipe.bottom;   // exact y-coordinate of the bottom closest pipe
         }
 
         // make sure all inputs are normalized to avoid bias
         return [
-            this.y / height,                                                // bird vertical position
-            (this.velocity - minVelocity) / (maxVelocity - minVelocity),    // bird velocity
-            pipeX / width,                                                  // distance to the upcoming pipe
-            pipeTop / height,                                               // top pipe boundary position
-            pipeBottom / height,                                            // bottom pipe boundary position
+            this.y / height,                                              // bird vertical position
+            (this.velocity - minVelocity) / (maxVelocity - minVelocity),  // bird velocity
+            pipeX / width,                                                // distance to the upcoming pipe
+            pipeTop / height,                                             // top pipe boundary position
+            pipeBottom / height,                                          // bottom pipe boundary position
         ];
-    }
-
-    think(closestPipe) {
-        let inputs = this.getState(closestPipe);
-        let action = this.brain.predict(inputs);
-
-        let jumpProb = action[0];
-        let doNothingProb = action[1];
-
-        if (jumpProb > doNothingProb) {
-            this.jump();
-        }
-    }
-
-    dispose() {
-        this.brain.dispose();
-    }
-
-    save() {
-        this.brain.save();
     }
 }

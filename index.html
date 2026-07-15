@@ -10,12 +10,41 @@
   <title>Flappy Bird RL</title>
 </head>
 
-<body>
+<body style="font-family: sans-serif;">
+
+  <div style="margin-bottom: 10px;">
+    <label for="mode-select"><b>select algorithm: </b></label>
+    <select id="mode-select" onchange="switchMode()">
+      <option value="ga">neuroevolution (ga)</option>
+      <option value="dqn">deep q-network (dqn)</option>
+    </select>
+  </div>
+
+  <script>
+    // simple query param logic to switch between algorithms
+    const urlParams = new URLSearchParams(window.location.search);
+    const mode = urlParams.get('mode') || 'ga';
+    document.getElementById('mode-select').value = mode;
+
+    function switchMode() {
+      const selectedMode = document.getElementById('mode-select').value;
+      window.location.href = '?mode=' + selectedMode;
+    }
+  </script>
+
   <script src="nn.js"></script>
   <script src="ga.js"></script>
+  <script src="ga_agent.js"></script>
+  <script src="dqn_agent.js"></script>
   <script src="bird.js"></script>
   <script src="pipe.js"></script>
-  <script src="sketch.js"></script>
+
+  <!-- dynamically load the correct sketch file based on the selected mode -->
+  <script>
+    const sketchScript = document.createElement('script');
+    sketchScript.src = mode === 'dqn' ? 'sketch_dqn.js' : 'sketch_ga.js';
+    document.body.appendChild(sketchScript);
+  </script>
 </body>
 
 </html>

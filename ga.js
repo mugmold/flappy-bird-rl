@@ -1,48 +1,48 @@
 class NeuroEvolution {
-    static nextGeneration(savedBirds, bestScore, targetPopulation) {
+    static nextGeneration(savedAgents, bestScore, targetPopulation) {
         // adjust fitness scores based on survival time and pipes passed
-        for (let bird of savedBirds) {
-            let frameScore = bird.fitness / 100;
-            let pipeScore = Math.pow(bird.score, 2) * 100;
-            bird.fitness = frameScore + pipeScore;
+        for (let agent of savedAgents) {
+            let frameScore = agent.fitness / 100;
+            let pipeScore = Math.pow(agent.score, 2) * 100;
+            agent.fitness = frameScore + pipeScore;
         }
 
-        let sumBirdFitness = 0;
+        let sumFitness = 0;
 
-        for (let bird of savedBirds) {
-            sumBirdFitness += bird.fitness;
+        for (let agent of savedAgents) {
+            sumFitness += agent.fitness;
         }
 
         // normalize fitness scores
-        for (let i = 0; i < savedBirds.length; ++i) {
-            savedBirds[i].fitness = savedBirds[i].fitness / sumBirdFitness;
+        for (let i = 0; i < savedAgents.length; ++i) {
+            savedAgents[i].fitness = savedAgents[i].fitness / sumFitness;
         }
 
         let dynamicMutationRate = map(bestScore, 0, 30, 0.20, 0.01, true);
-        let newPopulation = [];
+        let newBrains = [];
 
         // generate new population based on fitness probability
         for (let i = 0; i < targetPopulation; i++) {
-            let parentBrain = this.pickOneRandomBrain(savedBirds);
+            let parentBrain = this.pickOneRandomBrain(savedAgents);
             let childBrain = parentBrain.copy();
             childBrain.mutate(dynamicMutationRate);
-            newPopulation.push(new Bird(childBrain));
+            newBrains.push(childBrain);
         }
 
         // dispose old models from memory to prevent memory leaks
-        for (let bird of savedBirds) {
-            bird.dispose();
+        for (let agent of savedAgents) {
+            agent.brain.dispose();
         }
 
-        return newPopulation;
+        return newBrains;
     }
 
-    static pickOneRandomBrain(savedBirds) {
+    static pickOneRandomBrain(savedAgents) {
         let r = random(1);
         let index = 0;
 
-        while (r > 0 && index < savedBirds.length) {
-            r -= savedBirds[index].fitness;
+        while (r > 0 && index < savedAgents.length) {
+            r -= savedAgents[index].fitness;
             index += 1;
         }
         index -= 1;
@@ -51,10 +51,10 @@ class NeuroEvolution {
         if (index < 0) {
             index = 0;
         }
-        if (index >= savedBirds.length) {
-            index = savedBirds.length - 1;
+        if (index >= savedAgents.length) {
+            index = savedAgents.length - 1;
         }
 
-        return savedBirds[index].brain;
+        return savedAgents[index].brain;
     }
 }
