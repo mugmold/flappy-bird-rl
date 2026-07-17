@@ -13,9 +13,6 @@ class DQNAgent {
         this.epsilonDecay = 0.995;       // slowly reduce randomness every training step
         this.learningRate = 0.001;
 
-        // variable to store the last training loss to display on the ui
-        this.lastLoss = null;
-
         // create the main brain (used for playing and predicting)
         this.model = this.buildModel();
 
@@ -144,9 +141,6 @@ class DQNAgent {
             epochs: 1,
             verbose: 0 // silence the tensorflow console logs
         });
-
-        // save the loss so we can display it on the ui
-        this.lastLoss = history.history.loss[0];
 
         // clean up memory
         statesTensor.dispose();

@@ -21,7 +21,7 @@ let isTestMode = false;
 let savedEpsilon = 1.0;
 let savedSpeed = 5;
 
-let currentScoreLabel, bestScoreLabel, speedLabel, episodeLabel, lossLabel;
+let currentScoreLabel, bestScoreLabel, speedLabel, episodeLabel;
 let btnTest, btnSave, btnLoad, hiddenFileInput;
 
 function setup() {
@@ -37,8 +37,6 @@ function setup() {
     episodeLabel = createP("");
     speedLabel = createP("");
 
-    lossLabel = createP("");
-
     // slider: min 1x, max 10x, default 5x, step 0.5x
     speedSlider = createSlider(1, 10, 5, 0.5);
     speedSlider.style('width', '200px');
@@ -50,7 +48,6 @@ function setup() {
     episodeLabel.parent(controlContainer);
     speedLabel.parent(controlContainer);
     speedSlider.parent(controlContainer);
-    lossLabel.parent(controlContainer);
 
     // button setup for test mode
     btnTest = createButton("Run Test Mode (1 Episode)");
@@ -311,10 +308,6 @@ async function handleEpisodeEnd() {
     }
 
     dqnAgent.onEpisodeEnd();
-
-    if (dqnAgent.lastLoss !== null) {
-        lossLabel.html("model loss: <b>" + dqnAgent.lastLoss.toFixed(4) + "</b> (Epsilon: " + dqnAgent.epsilon.toFixed(2) + ")");
-    }
 
     resetGameEnvironment();
     isTraining = false;
